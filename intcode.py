@@ -3,7 +3,9 @@ import logging
 import sys
 import queue
 import threading
-logging.basicConfig(level=logging.DEBUG, format='%(relativeCreated)6d %(threadName)s %(message)s')
+
+
+class InputWait(Exception): pass
 
 class Memory(list):
 	def _allocateTo(self, index):
@@ -62,7 +64,7 @@ class OP:
 		self.assigns = assigns
 		self.jumps = jumps
 
-class IntCodeComp(threading.Thread):
+class IntCodeComp(object):
 
 	OPS = \
 	{
@@ -84,6 +86,9 @@ class IntCodeComp(threading.Thread):
 		self.position = 0
 		self.relative_base = 0
 
+		self.done = False
+		self.paused = True
+
 		# patch input + output ops
 		self.OPS[3].operator = self.input
 		self.OPS[4].operator = self.output
@@ -91,12 +96,17 @@ class IntCodeComp(threading.Thread):
 	def input(self, *args, **kwargs):
 		logging.debug('Input: ')
 		# all items move from left to right
-		return int(self._input.get())
+		try:
+			return int(self._input.get(False))
+		except queue.Empty:
+			raise InputWait
 
 	def output(self, arr):
 		# all items move from left to right
 		logging.debug('Output: ')
 		self._output.put(arr[0])
+		
+
 
 	def run(self):
 		self.process()
@@ -109,27 +119,33 @@ class IntCodeComp(threading.Thread):
 		self.OPS[4].operator = self.output
 	
 		logging.info('START')
-		while self.position < len(self.program) - 1:	
-			logging.debug('self.position: {}'.format(self.position))
-			# logging.debug('self.position: {}, self.program: {}'.format(self.position, self.program))
-			nextCode = self.program[self.position]
-			opcode = abs(nextCode) % 100   # last 2 digits of code
+		self.paused = False
+		while self.position < len(self.program) - 1:
+			try:
+				logging.debug('self.position: {}'.format(self.position))
+				# logging.debug('self.position: {}, self.program: {}'.format(self.position, self.program))
+				nextCode = self.program[self.position]
+				opcode = abs(nextCode) % 100   # last 2 digits of code
 
-			parametermodes = []
-			if str(abs(nextCode) // 100):   # there are explicit parameter modes
-				parametermodes = [int(mode) for mode in str(abs(nextCode) // 100)]   # remaining digits
+				parametermodes = []
+				if str(abs(nextCode) // 100):   # there are explicit parameter modes
+					parametermodes = [int(mode) for mode in str(abs(nextCode) // 100)]   # remaining digits
 
-			if opcode == 99:
-				logging.warning('HALT')
-				break
+				if opcode == 99:
+					logging.warning('HALT')
+					break
 
-			elif opcode in self.OPS:
-				self.procOP(self.OPS[opcode], parametermodes)
+				elif opcode in self.OPS:
+					self.procOP(self.OPS[opcode], parametermodes)
 
-			else:
-				raise ValueError('Invalid opcode {}'.format(opcode))
+				else:
+					raise ValueError('Invalid opcode {}'.format(opcode))
+			except InputWait:
+				self.paused = True
+				return
 
 		logging.info('EXIT')
+		self.done = True
 
 		return self.program
 
