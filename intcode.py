@@ -2,10 +2,16 @@ import numpy as np
 import logging
 import sys
 import queue
+import collections
 import threading
 
 
+# logging.basicConfig(level=logging.DEBUG)
+
+
 class InputWait(Exception): pass
+class OutputWait(Exception): pass
+
 
 class Memory(list):
 	def _allocateTo(self, index):
@@ -57,28 +63,9 @@ class Memory(list):
 		else:
 			raise IndexError('Index is not a single index or a slice.')
 
-class OP:
-	def __init__(self, n_params, operator, assigns=True, jumps=False):
-		self.n_params = n_params
-		self.operator = operator
-		self.assigns = assigns
-		self.jumps = jumps
 
 class IntCodeComp(object):
-
-	OPS = \
-	{
-		1: OP(4, np.sum),   # sum of 2 inputs
-		2: OP(4, np.prod),   # product of 2 inputs
-		3: OP(2, None),   # input
-		4: OP(2, None, assigns=False),   # output
-		5: OP(3, lambda val: val[0] != 0, jumps=True, assigns=False),   # jump if true
-		6: OP(3, lambda val: val[0] == 0, jumps=True, assigns=False),   # jump if false
-		7: OP(4, lambda arr: int(arr[0] < arr[1])),   # less than
-		8: OP(4, lambda arr: int(arr[0] == arr[1])),   # equals
-	}
-
-	def __init__(self, program, input_=queue.Queue(), output_=queue.Queue()):
+	def __init__(self, program, input_=collections.deque(), output_=collections.deque()):
 		super(IntCodeComp, self).__init__()
 		self.program = Memory(program)
 		self._input = input_
@@ -89,107 +76,166 @@ class IntCodeComp(object):
 		self.done = False
 		self.paused = True
 
-		# patch input + output ops
-		self.OPS[3].operator = self.input
-		self.OPS[4].operator = self.output
+		self.OPS = \
+		{
+			1: self.sum,   # sum of 2 inputs
+			2: self.prod,   # product of 2 inputs
+			3: self.get_input,   # input
+			4: self.put_output, 
+			5: self.jump_if_true,   # jump if true
+			6: self.jump_if_false,   # jump if false
+			7: self.less_than,   # less than
+			8: self.equals,   # equals
+			9: self.modify_relative_base,   # modify relative base
+		}
 
-	def input(self, *args, **kwargs):
+	def procOpModes(self, raw_operands, modes):
+		processed_operands = []
+
+		for i, operand in enumerate(raw_operands):
+			if modes[i] == 1:
+				processed_operands.append(operand)
+			elif modes[i] == 0:
+				processed_operands.append(self.program[operand])
+			elif modes[i] == 2:
+				processed_operands.append(self.program[self.relative_base + operand])
+			else:
+				raise ValueError('Operand mode {} not supported'.format(modes[i]))
+
+		return processed_operands
+
+
+	def sum(self, modes):
+		op1, op2 = self.procOpModes(self.program[self.position+1:self.position+3], modes)
+
+		if modes[2] == 2:
+			self.program[self.relative_base + self.program[self.position + 3]] = op1 + op2
+		else:
+			self.program[self.program[self.position + 3]] = op1 + op2
+
+		self.position += 4
+
+
+	def prod(self, modes):
+		op1, op2 = self.procOpModes(self.program[self.position+1:self.position+3], modes)
+
+		if modes[2] == 2:
+			self.program[self.relative_base + self.program[self.position + 3]] = op1 * op2
+		else:
+			self.program[self.program[self.position + 3]] = op1 * op2
+
+		self.position += 4
+
+	def put_input(self, val):
+		self._input.appendleft(int(val))
+
+	def get_input(self, modes):
 		logging.debug('Input: ')
 		# all items move from left to right
 		try:
-			return int(self._input.get(False))
-		except queue.Empty:
+			val = int(self._input.pop())
+
+			if modes[0] == 2:
+				self.program[self.relative_base + self.program[self.position + 1]] = val
+			else:
+				self.program[self.program[self.position + 1]] = val
+
+			self.position += 2
+		except (queue.Empty, IndexError):
 			raise InputWait
 
-	def output(self, arr):
-		# all items move from left to right
+	def put_output(self, modes):
+		op1, = self.procOpModes([self.program[self.position+1]], modes)
 		logging.debug('Output: ')
-		self._output.put(arr[0])
-		
+		self._output.appendleft(op1)
+		self.position += 2
 
+	def get_output(self):
+		try:
+			val = int(self._output.pop())
+			return val
+		except (queue.Empty, IndexError):
+			raise OutputWait
 
-	def run(self):
-		self.process()
-
-	def process(self):
-		# logging.debug(self.program)
-
-		# patch input + output ops
-		self.OPS[3].operator = self.input
-		self.OPS[4].operator = self.output
 	
+	def jump_if_true(self, modes):
+		op1, op2 = self.procOpModes(self.program[self.position+1:self.position+3], modes)
+
+		if op1:
+			self.position = op2
+		else:
+			self.position += 3
+
+	def jump_if_false(self, modes):
+		op1, op2 = self.procOpModes(self.program[self.position+1:self.position+3], modes)
+
+		if not op1:
+			self.position = op2
+		else:
+			self.position += 3
+
+	def less_than(self, modes):
+		op1, op2 = self.procOpModes(self.program[self.position+1:self.position+3], modes)
+
+		if modes[2] == 2:
+			self.program[self.relative_base + self.program[self.position + 3]] = int(op1 < op2)
+		else:
+			self.program[self.program[self.position + 3]] = int(op1 < op2)
+
+		self.position += 4
+
+	def equals(self, modes):
+		op1, op2 = self.procOpModes(self.program[self.position+1:self.position+3], modes)
+
+		if modes[2] == 2:
+			self.program[self.relative_base + self.program[self.position + 3]] = int(op1 == op2)
+		else:
+			self.program[self.program[self.position + 3]] = int(op1 == op2)
+
+		self.position += 4
+
+
+	def modify_relative_base(self, modes):
+
+		op1, = self.procOpModes([self.program[self.position+1]], modes)
+
+		self.relative_base += op1
+		self.position += 2
+
+	def process(self):	
 		logging.info('START')
 		self.paused = False
 		while self.position < len(self.program) - 1:
 			try:
+				logging.debug('############################################')
 				logging.debug('self.position: {}'.format(self.position))
+				logging.debug('self.relative_base: {}'.format(self.relative_base))
 				# logging.debug('self.position: {}, self.program: {}'.format(self.position, self.program))
 				nextCode = self.program[self.position]
 				opcode = abs(nextCode) % 100   # last 2 digits of code
 
 				parametermodes = []
 				if str(abs(nextCode) // 100):   # there are explicit parameter modes
-					parametermodes = [int(mode) for mode in str(abs(nextCode) // 100)]   # remaining digits
+					parametermodes = Memory([int(mode) for mode in str(abs(nextCode) // 100)[::-1]])   # remaining digits
 
 				if opcode == 99:
 					logging.warning('HALT')
 					break
 
 				elif opcode in self.OPS:
-					self.procOP(self.OPS[opcode], parametermodes)
+					logging.debug('Opcode: {}'.format(opcode))
+					self.OPS[opcode](parametermodes)
 
 				else:
 					raise ValueError('Invalid opcode {}'.format(opcode))
 			except InputWait:
 				self.paused = True
-				return
+				raise
 
 		logging.info('EXIT')
 		self.done = True
 
 		return self.program
-
-	def procOP(self, op, modes=[]):
-		""" process an operation on n operands. 
-
-		modes of parameters are default 0, which indicates 
-		position mode. mode 1 is immediate or value mode
-
-		"""
-		if op.assigns:
-			raw_operands = self.program[self.position+1:self.position+op.n_params-1]
-			destination = self.program[self.position+op.n_params-1]
-		else:
-			raw_operands = self.program[self.position+1:self.position+op.n_params]
-			destination = None
-
-		# if there is no mode specified or leading 0s, make them explicit
-		while len(modes) < len(raw_operands):
-					modes.insert(0, 0)
-		modes = modes[::-1]
-
-		# process operands according to the mode of each
-		processed_operands = []
-		for i, operand in enumerate(raw_operands):
-			if modes[i] == 1:
-				processed_operands.append(operand)
-			elif modes[i] == 0:
-				processed_operands.append(self.program[operand])
-			else:
-				raise ValueError('Operand mode {} not supported'.format(modes[i]))
-
-		if op.jumps:
-			if op.operator(processed_operands):
-				self.position = processed_operands[1]
-			else:
-				self.position += op.n_params
-		else:
-			if op.assigns:
-				self.program[destination] = op.operator(processed_operands)
-			else:
-				op.operator(processed_operands)
-			
-			self.position += op.n_params
 
 
 if __name__ == '__main__':

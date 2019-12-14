@@ -31,10 +31,10 @@ def test_day2_noinput(input, output):
 	[3,3,1108,-1,8,3,4,3,99]))
 def test_input_equal_to_eight(program, input, output):
 	comp = IntCodeComp(program)
-	comp._input.put(input)
+	comp.put_input(input)
 	comp.process()
 
-	assert comp._output.get() == output
+	assert comp.get_output() == output
 
 
 @pytest.mark.parametrize('input, output',
@@ -51,10 +51,10 @@ def test_input_equal_to_eight(program, input, output):
 	[3,3,1107,-1,8,3,4,3,99]))
 def test_input_less_than_eight(program, input, output):
 	comp = IntCodeComp(program)
-	comp._input.put(input)
+	comp.put_input(input)
 	comp.process()
 
-	assert comp._output.get() == output
+	assert comp.get_output() == output
 
 
 @pytest.mark.parametrize('input, output',
@@ -70,10 +70,10 @@ def test_input_less_than_eight(program, input, output):
 	[3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9]))
 def test_input_non_zero(input, output, program):
 	comp = IntCodeComp(program)
-	comp._input.put(input)
+	comp.put_input(input)
 	comp.process()
 
-	assert comp._output.get() == output
+	assert comp.get_output() == output
 
 
 @pytest.mark.parametrize('input, output',
@@ -85,10 +85,10 @@ def test_input_non_zero(input, output, program):
 )
 def test_input_eight_equals(input, output):
 	comp = IntCodeComp([3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31, 1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104, 999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99])
-	comp._input.put(input)
+	comp.put_input(input)
 	comp.process()
 
-	assert comp._output.get() == output
+	assert comp.get_output() == output
 
 
 
