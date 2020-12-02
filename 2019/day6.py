@@ -15,15 +15,23 @@ def countOrbits(tree):
 	return n_orbits
 
 
-def map2tree(orbitmap):
-	tree = Node('COM')
+def map2tree(orbitmap, rootname='COM', delim=')'):
+	root = Node(rootname)
 
-	subtrees = {'COM':tree}
-	for line in orbitmap.splitlines():
-		if line:
-			parent, child = line.split(')')
+	map = [l.split(delim) for l in orbitmap.splitlines() if l]
+	parents, children = (list(i) for i in zip(*map))
 
-			
+	while parents:
+		for node in LevelOrderIter(root):
+			while True:
+				try:
+					idx = parents.index(node.name)
+					Node(children[idx], parent=node)
+					del parents[idx]
+					del children[idx]
+				except:
+					break
+	return root
 
 	# 		parentnode = []
 	# 		for subtree in subtrees.values():
