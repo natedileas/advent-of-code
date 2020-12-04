@@ -1,92 +1,127 @@
-import re
-# day 6 
-from anytree import Node, RenderTree, AsciiStyle, findall, LevelOrderIter
+import math
 
-def countOrbits(tree):
-	def countOrbitsForNode(node, count=0):
-		if node.parent:
-			return countOrbitsForNode(node.parent, count+1)
-		else:
-			return count
+# def Node:
+#   def __init__(self, label, value):
+#       self.label = label
+#       self.value = value
+#       self.children = []
 
-	n_orbits = 0
-	for node in LevelOrderIter(tree):
-		n_orbits += countOrbitsForNode(node)
+def parseitem(item):
+    amount, unit = item.strip().split()
+    return [int(amount), unit]
 
-	return n_orbits
+def count_ore(reactions, root='FUEL', bottom='ORE'):
+    mapp = {}
+    mapp[bottom] = (1, None)
+    suminputs = {}
+    for line in reactions.splitlines():
+        if line:
+            ins, out = line.split('=>')
+            inputs = [parseitem(i) for i in ins.split(',')]
+            outamount, outunit = parseitem(out)
+            mapp[outunit] = outamount, inputs
 
-def parse_nanofactory(item):
-	match = re.search('(\d{1,10}) (\w{1,10})', item)
+            for inamount, inunit in inputs:
+                suminputs.setdefault(inunit, 0)
+                suminputs[inunit] += inamount
 
-	if match:
-		amount, name = match.groups()
-		return int(amount), name 
+    def _cnt_ore_recur(outunit, level=0):
+        # this works if every reaction is separate. but I need to count up all the instances and then divide into them.
+        outamount, inputs = mapp[outunit]
+
+        if outunit == bottom:
+            return outamount
+
+        ore = 0
+        for inamount, inunit in inputs:
+            logging.debug(f'{level}: {outunit}, {outamount}, {inunit}, {inamount}')
+            ore += _cnt_ore_recur(inunit, level=level+1) * outamount * suminputs[inunit]
+            logging.debug(f'{level}: {outunit}, {ore}')
+
+        return ore
+
+    def _cnt_ore_cum(outunit):
+        # starting from root
+        # for a given input, find all the inputs of the same type
+        pass
+
+    return _cnt_ore_recur(root)
+        
+
+def map2graph(reactions):
+    graph = {}
+    graph['ORE'] = [1, []]
+
+    for line in reactions.splitlines():
+        if line:
+            ins, out = line.split('=>')
+            inputs = [parseitem(i) for i in ins.split(',')]
+            outamount, outunit = parseitem(out)
+            graph[outunit] = [outamount, inputs]
+
+    def find_all_paths(start_vertex, end_vertex, path=[]):
+        """ find all paths from start_vertex to 
+            end_vertex in graph """
+        path = path + [start_vertex]
+        if start_vertex == end_vertex:
+            return [path]
+        if start_vertex not in graph:
+            return []
+        paths = []
+        for amount, vertex in graph[start_vertex][1]:
+            if vertex not in path:
+                extended_paths = find_all_paths(vertex, 
+                                                 end_vertex, 
+                                                 path)
+                for p in extended_paths: 
+                    paths.append(p)
+        return paths
+
+    # zero all the amounts
+    def zero_amounts(g):
+        for unit, (amount, inputs) in g.items():
+            g[unit][0] = 0
+            g[unit][1] = []
+            for (inamount, inunit) in inputs:
+                g[unit][1].append([0, inunit])
 
 
-def reactions2tree(orbitmap, rootname='FUEL', delim='=>'):
-	root = Node(rootname, amount=1)
+    def accum_paths(paths, end='ORE'):
+        while any((any(p) for p in paths)):
+            for path in paths:
+                if path:
+                    # take the first item off the path
+                    unit = path.pop(0)
+                    if unit == end:
+                        path = []
+                        break
 
-	map = [l.split(delim) for l in orbitmap.splitlines() if l]
-	raw_children, raw_parents = (list(i) for i in zip(*map))
+                    nextunit = path[0]
+                    # move it's requirements to the next item
 
-	parents = []
-	children = []
-	for i in range(len(raw_parents)):
-		children = []
-		for child in raw_children:
-			subchildren = child.split(',')
-			children.append([parse_nanofactory(subchild) for subchild in subchildren])
 
-		children_names, children_amts = zip(*children)
+                    amount, inputs = graph[unit]
+                    nextamount, nextinputs = graph[nextunit]
+                    convamount = [i[0] for i in inputs if i[1]==nextunit][0]
+                    if nextunit == end:
+                        path = []
+                    graph_accum[nextunit][0] += convamount
+                
 
-		parents = []
-		for parent in raw_parents:
-			parents.append(parse_nanofactory(parent))
+    import pprint
+    pprint.pprint(graph)
+    paths = find_all_paths('FUEL', 'ORE')
+    print(paths)
 
-		parent_names, parent_amts = zip(*parents)
+    import copy
+    graph_accum = copy.deepcopy(graph)
+    zero_amounts(graph_accum)
+    pprint.pprint(graph_accum)
+    accum_paths(paths)
+    pprint.pprint(graph_accum)
 
-	while parents:
-		for node in LevelOrderIter(root):
-			while True:
-				try:
-					idx = parents.index(node.name)
 
-					for child_amt, child_name in children[idx]:
-						Node(child_name, parent=node, amount=child_amt)
 
-					del parents[idx]
-					del children[idx]
-				except:
-					break
-	return root
-
-	# 		parentnode = []
-	# 		for subtree in subtrees.values():
-	# 			parentnode.append(findall(subtree, filter_=lambda node: node.name == parent))
-
-	# 		parentnode = list(filter(None, parentnode))
-	# 		if parentnode:
-	# 			Node(child, parent=parentnode[0][0])
-	# 		else:
-	# 			subtrees[parent] = Node(child)
-
-	# niter = 0
-	# while len(subtrees) > 1 and niter < 1000:
-	# 	niter += 1
-	# 	subtreenames = list(subtrees.keys())
-	# 	for i, name in enumerate(subtreenames):
-	# 		for j, name2 in enumerate(subtreenames):
-	# 			# look in subtrees[name2] for the parent node of
-	# 			parentnode = findall(subtrees[name2], filter_=lambda node: node.name == name)
-	# 			try:
-	# 				if parentnode:
-	# 					parentnode[0].parent = subtrees[name]
-	# 					subtrees.pop(name)
-	# 					subtreenames.remove(name)
-	# 					break
-	# 			except:
-	# 				continue
-	# return tree
 
 TESTMAP1 = """
 10 ORE => 10 A
@@ -98,12 +133,8 @@ TESTMAP1 = """
 """
 
 if __name__ == '__main__':
-	
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
 
-	tree = reactions2tree(TESTMAP1)
-	print(RenderTree(tree, style=AsciiStyle()).by_attr())
-	print(countOrbits(tree))
-
-	# tree = map2tree(open('input6.txt', 'r').read())
-	# print(RenderTree(tree, style=AsciiStyle()).by_attr())
-	# print(countOrbits(tree))
+    # print(count_ore(TESTMAP1))
+    print(map2graph(TESTMAP1))
