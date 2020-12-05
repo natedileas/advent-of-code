@@ -28,14 +28,14 @@ if __name__ == '__main__':
 	all_ids = [row_id(i) for i in ids]
 	print('p1:', max(all_ids))
 
-"""
->>> d = np.diff(np.sort(all_ids))
->>> np.where(d != 1)
-(array([652], dtype=int64),)
->>> np.sort(all_ids)[652]
-698
->>> np.sort(all_ids)[651:654]
-array([697, 698, 700])
+	"""
+	>>> d = np.diff(np.sort(all_ids))
+	>>> np.where(d != 1)
+	(array([652], dtype=int64),)
+	>>> np.sort(all_ids)[652]
+	698
+	>>> np.sort(all_ids)[651:654]
+	array([697, 698, 700])
 
-"""
-print('p2:', 699)
+	"""
+	print('p2:', 699)
