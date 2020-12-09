@@ -1,4 +1,6 @@
 
+class InfiniteLoopException(Exception): pass
+
 class Boot:
 	def __init__(self, data):
 		self.lines = list(filter(lambda l:l, data.splitlines()))
@@ -12,15 +14,12 @@ class Boot:
 
 		while self.index < len(self.lines):
 			if self.index in indices:
-				raise Exception('infinite loop')
+				raise InfiniteLoopException(f'infinite loop at index: {self.index}')
 
 			indices.append(self.index)
 			op = self.lines[self.index]
 			
 			# print(op, self.index, self.acc)
-			# if not op:
-			# 	self.index += 1
-			# 	continue
 			optype, num = op.split()
 
 			if optype == 'nop':
@@ -47,7 +46,7 @@ class Boot:
 			try:
 				self.run()
 				return
-			except Exception:
+			except InfiniteLoopException:
 				pass
 
 			self.lines[i] = oldline
@@ -69,11 +68,12 @@ INPUT = open('input8.txt').read()
 
 if __name__ == '__main__':
 	b = Boot(INPUT)
-	# b.run()
+
+	try:
+		b.run()
+	except InfiniteLoopException:
+		pass
+	print('part 1:', b.acc)
+
 	b.fix_program()
-	print(b.acc, b.index)
-
-
-	# b = Boot()
-	# b.run()
-	# print(b.acc, b.index)
+	print('part 2:', b.acc)
