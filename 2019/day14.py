@@ -147,4 +147,4 @@ if __name__ == '__main__':
     print(count_fuel_for_n(TEST4), 5586022)
     print(count_fuel_for_n(TEST5), 460664)
 
-    print('Part 2:', count_fuel_for_n(open('input14.txt').read()))
+    print('Part 2:', count_fuel_for_n(open('input14.txt').read()))  # 1896689 is "too high"
