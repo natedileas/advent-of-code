@@ -23,28 +23,31 @@ TEST1 = """
 import numpy as np
 import sys
 
-if __name__ == '__main__':
-	INPUT = np.asarray([int(i) for i in open('input9.txt').read().splitlines() if i])
-	# INPUT = np.asarray([int(i) for i in TEST1.splitlines() if i])
-	print(INPUT)
 
-	addmat = np.array((len(INPUT), len(INPUT)))
-	addmat = INPUT[:,np.newaxis] + INPUT 
+def find_nonmatching_element(arr, masklen=25):
+	# addmat = np.array((len(INPUT), len(INPUT)))
+	addmat = arr[:,np.newaxis] + arr 
 
-	print(addmat)
+	for i in range(0, len(arr) - masklen):
+		if arr[i+masklen] not in addmat[i:i+masklen,i:i+masklen]:
+			return arr[i+masklen]
 
-	masklen = 25
-	for i in range(0, len(INPUT) - masklen):
-		if INPUT[i+masklen] not in addmat[i:i+masklen,i:i+masklen]:
-			print (i, INPUT[i+masklen])
-			break
 
-	target = 15690279
-	blocklen = 0
+def find_block_adds(arr, sumval):
+	blocklen = 1
 	while blocklen < 100:
 		blocklen += 1
-		for i in range(len(INPUT) - blocklen):
-			if sum(INPUT[i:i+blocklen]) == target:
-				print(i, blocklen, INPUT[i:i+blocklen].min() + INPUT[i:i+blocklen].max())
-				break
-				sys.exit(0)
+		for i in range(len(arr) - blocklen):
+			if arr[i:i+blocklen].sum() == sumval:
+				return arr[i:i+blocklen].min() + arr[i:i+blocklen].max()
+
+
+def data2arr(data):
+	return np.asarray([int(i) for i in data.splitlines() if i])
+
+
+INPUT9 = open('input9.txt').read()
+
+if __name__ == '__main__':
+	print('part 1:', find_nonmatching_element(data2arr(INPUT9)))
+	print('part 2:', find_block_adds(data2arr(INPUT9), find_nonmatching_element(data2arr(INPUT9))))
