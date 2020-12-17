@@ -95,12 +95,32 @@ def total_chances(arr):
 
 	return np.prod(np.asarray(all_chances))
 
+def count_adapters(adapters, stack=0):
+	# print('\r', stack, end='')
+	count = 0
+
+	if (np.diff(adapters) > 3).any():
+		return 0
+	else:
+		# print(adapters, stack)
+		count += 1
+
+	for i in range(1 , len(adapters) - 1):
+		if stack < 3: print(stack, i)
+		adap = adapters.pop(i)
+		count += count_adapters(adapters, stack=stack+1)
+		adapters.insert(i, adap)
+
+	return count
+
 
 if __name__ == '__main__':
 	import numpy as np
 	arr = np.asarray([int(i) for i in TEST1.splitlines() if i])
 	arr = np.append(arr, [0, max(arr) + 3])
 	arr.sort()
+
+	print(count_adapters(list(arr)))
 
 	df = np.diff(arr)
 
