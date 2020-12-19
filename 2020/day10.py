@@ -95,32 +95,63 @@ def total_chances(arr):
 
 	return np.prod(np.asarray(all_chances))
 
-def count_adapters(adapters, stack=0):
+
+def count_adapters(adapters, stack=0, set_options=set()):
 	# print('\r', stack, end='')
 	count = 0
 
 	if (np.diff(adapters) > 3).any():
-		return 0
+		return 0, set_options
 	else:
-		# print(adapters, stack)
-		count += 1
+		print(adapters, stack)
+		set_options.add(','.join((str(i) for i in adapters)))
+		# count += 1
 
 	for i in range(1 , len(adapters) - 1):
-		if stack < 3: print(stack, i)
+		# if stack < 3: print(stack, i)
 		adap = adapters.pop(i)
-		count += count_adapters(adapters, stack=stack+1)
+		c, s =  count_adapters(adapters, stack=stack+1, set_options=set())
+		count += len(s)
 		adapters.insert(i, adap)
 
-	return count
+	return count, set_options
+
+
+def count_adapters_big(adapters):
+	diff = np.diff(adapters)
+	indexs, = np.where(diff == 3)
+
+	indexs += 1
+	indexs = np.append(indexs,[len(adapters)])
+	indexs = np.append([0], indexs)
+
+	sublists = []
+	# p = 1
+	for i in range(len(indexs)-1):
+		sublists.append(adapters[indexs[i]:indexs[i+1]+1])
+		# p = i
+
+	print(adapters)
+	print(diff)
+	print(indexs)
+	print(sublists)
+
+	prod = 1
+	for sub in sublists:
+		c, s =  count_adapters(list(sub))
+		# print(sub, count_adapters(list(sub)))
+		prod *= len(s)
+
+	return prod
 
 
 if __name__ == '__main__':
 	import numpy as np
-	arr = np.asarray([int(i) for i in TEST1.splitlines() if i])
+	arr = np.asarray([int(i) for i in TEST2.splitlines() if i])
 	arr = np.append(arr, [0, max(arr) + 3])
 	arr.sort()
 
-	print(count_adapters(list(arr)))
+	# print(count_adapters(list(arr)))
 
 	df = np.diff(arr)
 
@@ -128,8 +159,8 @@ if __name__ == '__main__':
 
 	print(sum(df == 1), sum(df == 3))
 
-	import itertools
-	n_valid = 0
+	# import itertools
+	# n_valid = 0
 	# for i in range(2, len(arr)):
 	# 	print(i)
 	# 	for indices in itertools.combinations(list(range(len(arr))), i):
@@ -138,7 +169,8 @@ if __name__ == '__main__':
 	# 		else:
 	# 			n_valid += 1
 
+	print(count_adapters(list(arr)))
+	print(count_adapters_big(arr))
 
-
-	print(total_chances(df))
-	print(countlist(df))
+	# print(total_chances(df))
+	# print(countlist(df))
