@@ -54,19 +54,19 @@ import math
 
 
 def combs(blocklen): 
-	# return blocklen
-	if blocklen == 1:
-		return 1
+    # return blocklen
+    if blocklen == 1:
+        return 1
 
-	if blocklen == 2:
-		return 2
-	if blocklen == 3:
-		return 4
+    if blocklen == 2:
+        return 2
+    if blocklen == 3:
+        return 4
 
-	if blocklen == 4:
-		return 8
+    if blocklen == 4:
+        return 8
 
-	return sum((math.comb(blocklen, k) for k in range(blocklen + 1)))
+    return sum((math.comb(blocklen, k) for k in range(blocklen + 1)))
 
 
 def countlist(random_list):
@@ -86,91 +86,109 @@ def countlist(random_list):
 
 
 def total_chances(arr):
-	all_chances = []
-	for count, item in countlist(arr):
-		if item == 1:
-			all_chances.append(combs(count))
+    all_chances = []
+    for count, item in countlist(arr):
+        if item == 1:
+            all_chances.append(combs(count))
 
-	print(all_chances)
+    print(all_chances)
 
-	return np.prod(np.asarray(all_chances))
+    return np.prod(np.asarray(all_chances))
 
 
 def count_adapters(adapters, stack=0, set_options=set()):
-	# print('\r', stack, end='')
-	count = 0
+    # print('\r', stack, end='')
+    count = 0
 
-	if (np.diff(adapters) > 3).any():
-		return 0, set_options
-	else:
-		print(adapters, stack)
-		set_options.add(','.join((str(i) for i in adapters)))
-		# count += 1
+    if (np.diff(adapters) > 3).any():
+        return 0, set_options
+    else:
+        print(adapters, stack)
+        set_options.add(','.join((str(i) for i in adapters)))
+        # count += 1
 
-	for i in range(1 , len(adapters) - 1):
-		# if stack < 3: print(stack, i)
-		adap = adapters.pop(i)
-		c, s =  count_adapters(adapters, stack=stack+1, set_options=set())
-		count += len(s)
-		adapters.insert(i, adap)
+    for i in range(1 , len(adapters) - 1):
+        # if stack < 3: print(stack, i)
+        adap = adapters.pop(i)
+        c, s =  count_adapters(adapters, stack=stack+1, set_options=set())
+        count += len(s)
+        adapters.insert(i, adap)
 
-	return count, set_options
+    return count, set_options
 
 
-def count_adapters_big(adapters):
-	diff = np.diff(adapters)
-	indexs, = np.where(diff == 3)
+def count_adapters(adapters, stack=0, set_options=set()):
+    # print('\r', stack, end='')
+    count = 0
 
-	indexs += 1
-	indexs = np.append(indexs,[len(adapters)])
-	indexs = np.append([0], indexs)
+    if (np.diff(adapters) > 3).any():
+        return 0, set_options
+    else:
+        print(adapters, stack)
+        set_options.add(','.join((str(i) for i in adapters)))
+        # count += 1
 
-	sublists = []
-	# p = 1
-	for i in range(len(indexs)-1):
-		sublists.append(adapters[indexs[i]:indexs[i+1]+1])
-		# p = i
+    for i in range(1 , len(adapters) - 1):
+        # if stack < 3: print(stack, i)
+        adap = adapters.pop(i)
+        c, s =  count_adapters(adapters, stack=stack+1, set_options=set())
+        count += len(s)
+        adapters.insert(i, adap)
 
-	print(adapters)
-	print(diff)
-	print(indexs)
-	print(sublists)
+    return count, set_options
 
-	prod = 1
-	for sub in sublists:
-		c, s =  count_adapters(list(sub))
-		# print(sub, count_adapters(list(sub)))
-		prod *= len(s)
 
-	return prod
+# def count_adapters_big(adapters):
+#   diff = np.diff(adapters)
+#   indexs, = np.where(diff == 3)
+
+#   indexs += 1
+#   indexs = np.append(indexs,[len(adapters)])
+#   indexs = np.append([0], indexs)
+
+#   sublists = []
+#   # p = 1
+#   for i in range(len(indexs)-1):
+#       sublists.append(adapters[indexs[i]:indexs[i+1]+1])
+#       # p = i
+
+#   print(adapters)
+#   print(diff)
+#   print(indexs)
+#   print(sublists)
+
+#   prod = 1
+#   for sub in sublists:
+#       c, s =  count_adapters(list(sub))
+#       # print(sub, count_adapters(list(sub)))
+#       prod *= len(s)
+
+#   return prod
 
 
 if __name__ == '__main__':
-	import numpy as np
-	arr = np.asarray([int(i) for i in TEST2.splitlines() if i])
-	arr = np.append(arr, [0, max(arr) + 3])
-	arr.sort()
+    # INPUT = TEST1
+    import numpy as np
+    lines = [int(i) for i in INPUT.splitlines() if i]
+    arr = np.asarray(lines)
+    arr = np.append(arr, [0, max(arr) + 3])
+    arr.sort()
 
-	# print(count_adapters(list(arr)))
 
-	df = np.diff(arr)
+    df = np.diff(arr)
 
-	print(arr, df)
+    print(arr, df)
 
-	print(sum(df == 1), sum(df == 3))
+    print(sum(df == 1), sum(df == 3))
 
-	# import itertools
-	# n_valid = 0
-	# for i in range(2, len(arr)):
-	# 	print(i)
-	# 	for indices in itertools.combinations(list(range(len(arr))), i):
-	# 		if np.any(np.diff(arr[np.array(sorted(indices))]) > 3):
-	# 			continue
-	# 		else:
-	# 			n_valid += 1
+    sol = {0:1}
+    for line in sorted(lines):
+        sol[line] = 0
+        if line - 1 in sol:
+            sol[line]+=sol[line-1]
+        if line - 2 in sol:
+            sol[line]+=sol[line-2]
+        if line - 3 in sol:
+            sol[line]+=sol[line-3]
 
-	print(count_adapters(list(arr)))
-	print(count_adapters_big(arr))
-
-	# print(total_chances(df))
-	# print(countlist(df))
+    print(sol[max(lines)])
