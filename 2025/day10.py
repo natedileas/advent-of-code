@@ -42,20 +42,25 @@ for line in data.splitlines():
     model = cp_model.CpModel()
 
     button_vars = []
+    # only variable is how many times we're pressing the buttons
     for b, idxs in enumerate(buttonidxs):
         bvar = model.new_int_var(0, max(jolts), f"button_presses_{b}")
         button_vars.append(bvar)
 
     for i, j in enumerate(jolts):
         # constrain what the buttons do; when pressed, they add one to the appropriate outputs
+        # strike above. the constaint is that the total number of buttons presses (for buttons which affect a particular output) has equal the output joltage.
         model.add(
             sum(b for b, bidxs in zip(button_vars, buttonidxs) if i in bidxs) == j
         )
 
-    model.minimize(sum(button_vars))
+    model.minimize(sum(button_vars))  # find the minimum number of presses
     solver = cp_model.CpSolver()
     status = solver.solve(model)
-    print(status)
-    print(",".join(str(solver.value(b)) for b in button_vars))
-    s += sum(solver.value(b) for b in button_vars)
+    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        # print(status)
+        # print(",".join(str(solver.value(b)) for b in button_vars))
+        s += sum(solver.value(b) for b in button_vars)
+    else:
+        raise ValueError("no solution")
 print(f"{s=}")
