@@ -84,50 +84,23 @@ for parent, child in edges:
     pnode.children.add(cnode)
     cnode.parents.add(pnode)
 
+def npaths(root: node):
+    pathcounts = {}
 
-# print(root)
-paths = set()
-
-
-def traverse(r, path=None):
-    if path is None:
-        path = []
-
-    path.append(r.loc)
-    if not r.children:
-        paths.add(tuple(path))
-
-    for c in r.children:
-        traverse(c, path[:])
-
-
-def traverse_and_count(r):
-    npaths = 0
-
-    def _traverse(n):
+    def simple_path(n: node):
         if not n.children:
-            nonlocal npaths
-            npaths += 1
-
-        for c in n.children:
-            _traverse(c)
-
-    _traverse(r)
-    return npaths
-
-def topoback(n):
-    leafs = [_ for _ in nodes.values() if not _.children]
-
-    def _scan_back(node, target, npaths=0):
-        if node == target:
+            pathcounts[n] = 1
             return 1
-        
-        for p in node.parent:
-            npaths += 
-        
+        elif n in pathcounts:
+            return pathcounts[n]
+        else:
+            path_count = 0
+            for nn in n.children:
+                path_count += simple_path(nn)
+            pathcounts[n] = path_count
+            return path_count
 
-    for l in leafs:
-        npaths += _scan_back(l, n)
+    return simple_path(root)
 
-# print(traverse_and_count(root))
-print(topoback(root))
+
+print(npaths(root))
