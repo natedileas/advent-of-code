@@ -31,24 +31,6 @@ def recursive_topological_sort(graph, node):
     return result
 
 
-def recursive_topological_sort_and_count(graph, node):
-    result = []
-    seen = set()
-    pathcounts = {"out": 1}
-
-    def recursive_helper(node, s=0):
-        pathcounts.setdefault(node, 0)
-        for neighbor in graph.get(node, ()):
-            if neighbor not in seen:
-                seen.add(neighbor)
-                recursive_helper(neighbor, s)
-            pathcounts[node] += pathcounts[neighbor]
-        result.insert(0, node)  # this line replaces the result.append line
-
-    recursive_helper(node)
-    return result, pathcounts
-
-
 def npaths(graph, source, target):
     pathcounts = {target: 1}
     if target != "out":
@@ -105,4 +87,3 @@ else:
         * npaths(graph, "fft", "dac")
         * npaths(graph, "dac", "out")
     )
-# print(npaths_inc(graph, "svr", "out", set(("dac", "fft"))))
